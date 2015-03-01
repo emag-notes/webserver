@@ -25,11 +25,10 @@ public class ServerThread implements Runnable {
           OutputStream output = socket.getOutputStream();) {
 
       HttpUtils.Request request = HttpUtils.parseRequest(input);
+      HttpUtils.StatusCode responseStatusCode = HttpUtils.calcStatusCode(request);
+      HttpUtils.createResponse(output, request, responseStatusCode);
 
-      HttpUtils.createResponseHeader(output, request);
-      HttpUtils.createResponseBody(output, request.getPath());
-
-      LOGGER.info(() -> Thread.currentThread().getName() + " " + request.getPath());
+      LOGGER.info(() -> Thread.currentThread().getName() + " " + responseStatusCode.number() + " " +  request.getPath());
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
