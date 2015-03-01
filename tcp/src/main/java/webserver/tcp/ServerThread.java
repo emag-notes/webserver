@@ -27,10 +27,11 @@ public class ServerThread implements Runnable {
           OutputStream output = new BufferedOutputStream(socket.getOutputStream());) {
 
       HttpUtils.Request request = HttpUtils.parseRequest(input);
+
       HttpUtils.StatusCode responseStatusCode = HttpUtils.calcStatusCode(request);
       HttpUtils.createResponse(output, request, responseStatusCode);
 
-      LOGGER.info(() -> Thread.currentThread().getName() + " " + responseStatusCode.number() + " " +  request.getPath());
+      LOGGER.info(() -> Thread.currentThread().getName() + " " + responseStatusCode.number() + " " + request.getPath());
     } catch (IOException e) {
       e.printStackTrace();
     } finally {

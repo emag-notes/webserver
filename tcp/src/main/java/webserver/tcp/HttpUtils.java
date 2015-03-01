@@ -6,6 +6,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -19,6 +23,7 @@ public class HttpUtils {
 
   private static final String DOCUMENT_ROOT = "assets";
   private static final String ERROR_DOCUMENT_ROOT = DOCUMENT_ROOT + "/errors";
+  private static final String SERVER_NAME = "localhost:8001";
 
   private static final HashMap<String, String> contentTypeMap =
     new HashMap<String, String>() {
@@ -35,7 +40,9 @@ public class HttpUtils {
     };
 
   public enum StatusCode {
-    OK(200, "OK"), NOT_FOUND(404, "Not Found");
+    OK(200, "OK"),
+    MOVED_PERMANENTLY(301, "Moved Permanently"),
+    NOT_FOUND(404, "Not Found");
 
     private int number;
     private String string;
@@ -57,6 +64,7 @@ public class HttpUtils {
   public static class Request {
     private String path;
     private String ext;
+    private String host;
 
     public Request() {}
 
@@ -75,6 +83,14 @@ public class HttpUtils {
     public void setExt(String ext) {
       this.ext = ext;
     }
+
+    public String getHost() {
+      return host;
+    }
+
+    public void setHost(String host) {
+      this.host = host;
+    }
   }
 
   public static Request parseRequest(InputStream input) throws IOException {
@@ -87,24 +103,42 @@ public class HttpUtils {
         request.setPath(path);
         String[] tmp = path.split("\\.");
         request.setExt(tmp[tmp.length - 1]);
+      } else if (line.startsWith("HOST:")) {
+        request.setHost(line.substring("HOST: ".length()));
       }
     }
+
+    if (request.getPath().endsWith("/")) {
+      request.setPath(request.getPath() + "index.html");
+      request.setExt("html");
+    }
+
     return request;
   }
 
   public static StatusCode calcStatusCode(Request request) throws IOException {
+
     StatusCode responseStatusCode = null;
-    try (InputStream is = new BufferedInputStream(new FileInputStream(DOCUMENT_ROOT + request.getPath()))) {
+    String targetPath = DOCUMENT_ROOT + request.getPath();
+    try (InputStream is = new BufferedInputStream(new FileInputStream(targetPath))) {
       responseStatusCode = StatusCode.OK;
     } catch (FileNotFoundException e) {
-      responseStatusCode = StatusCode.NOT_FOUND;
+      FileSystem fs = FileSystems.getDefault();
+      Path targetPathObj = fs.getPath(targetPath);
+      if (Files.isDirectory(targetPathObj)) {
+        responseStatusCode = StatusCode.MOVED_PERMANENTLY;
+      } else {
+        responseStatusCode = StatusCode.NOT_FOUND;
+      }
     }
     return responseStatusCode;
   }
 
   public static void createResponse(OutputStream output, Request request, StatusCode statusCode) throws IOException {
     createResponseHeader(output, request, statusCode);
-    createResponseBody(output, request.path, statusCode);
+    if (statusCode != StatusCode.MOVED_PERMANENTLY) {
+      createResponseBody(output, request.path, statusCode);
+    }
   }
 
   private static void createResponseHeader(OutputStream output, Request request, StatusCode status) throws IOException {
@@ -116,11 +150,15 @@ public class HttpUtils {
       case OK:
         IOUtils.writeLine(output, "Content-type: " + getContentType(request.getExt()));
         break;
+      case MOVED_PERMANENTLY:
       case NOT_FOUND:
         IOUtils.writeLine(output, "Content-type: text/html");
         break;
       default:
         throw new RuntimeException("invalid status"); // never
+    }
+    if (status == StatusCode.MOVED_PERMANENTLY) {
+      IOUtils.writeLine(output, "Location: " + resolveLocation(request));
     }
     IOUtils.writeLine(output, "");
   }
@@ -133,12 +171,18 @@ public class HttpUtils {
     return contentType;
   }
 
+  private static String resolveLocation(Request request) {
+    return "http://" + (request.getHost() != null ? request.getHost() :  SERVER_NAME) + request.getPath() + "/";
+  }
+
   private static void createResponseBody(OutputStream output, String path, StatusCode statusCode) throws IOException {
     String actualPath;
     switch (statusCode) {
       case OK:
         actualPath = DOCUMENT_ROOT + path;
         break;
+      case MOVED_PERMANENTLY:
+        return;
       case NOT_FOUND:
         actualPath = ERROR_DOCUMENT_ROOT + "/404.html";
         break;
