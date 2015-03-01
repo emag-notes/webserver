@@ -12,6 +12,11 @@ task runServer02 (type: JavaExec) {
   main = "webserver.tcp.Server02"
 }
 
+task runServer03 (type: JavaExec) {
+  classpath = sourceSets.main.runtimeClasspath
+  main = "webserver.tcp.Server03"
+}
+
 task runClient01 (type: JavaExec) {
   classpath = sourceSets.main.runtimeClasspath
   main = "webserver.tcp.Client01"
