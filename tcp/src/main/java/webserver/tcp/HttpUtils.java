@@ -1,5 +1,6 @@
 package webserver.tcp;
 
+import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -93,7 +94,7 @@ public class HttpUtils {
 
   public static StatusCode calcStatusCode(Request request) throws IOException {
     StatusCode responseStatusCode = null;
-    try (FileInputStream fis = new FileInputStream(DOCUMENT_ROOT + request.getPath())) {
+    try (InputStream is = new BufferedInputStream(new FileInputStream(DOCUMENT_ROOT + request.getPath()))) {
       responseStatusCode = StatusCode.OK;
     } catch (FileNotFoundException e) {
       responseStatusCode = StatusCode.NOT_FOUND;
@@ -144,9 +145,9 @@ public class HttpUtils {
       default:
         throw new RuntimeException("invalid status"); // never
     }
-    try (FileInputStream fis = new FileInputStream(actualPath)) {
+    try (InputStream is = new BufferedInputStream(new FileInputStream(actualPath))) {
       int ch;
-      while ((ch = fis.read()) != -1) {
+      while ((ch = is.read()) != -1) {
         output.write(ch);
       }
     }

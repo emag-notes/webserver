@@ -1,5 +1,7 @@
 package webserver.tcp;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -21,8 +23,8 @@ public class ServerThread implements Runnable {
 
   @Override
   public void run() {
-    try (InputStream input = socket.getInputStream();
-          OutputStream output = socket.getOutputStream();) {
+    try (InputStream input = new BufferedInputStream(socket.getInputStream());
+          OutputStream output = new BufferedOutputStream(socket.getOutputStream());) {
 
       HttpUtils.Request request = HttpUtils.parseRequest(input);
       HttpUtils.StatusCode responseStatusCode = HttpUtils.calcStatusCode(request);
