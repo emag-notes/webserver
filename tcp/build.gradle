@@ -2,12 +2,22 @@ apply plugin: 'java'
 
 sourceCompatibility = targetCompatibility = 1.8
 
-task runServer (type: JavaExec) {
+task runServer01 (type: JavaExec) {
   classpath = sourceSets.main.runtimeClasspath
   main = "webserver.tcp.Server01"
 }
 
-task runClient (type: JavaExec) {
+task runServer02 (type: JavaExec) {
+  classpath = sourceSets.main.runtimeClasspath
+  main = "webserver.tcp.Server02"
+}
+
+task runClient01 (type: JavaExec) {
   classpath = sourceSets.main.runtimeClasspath
   main = "webserver.tcp.Client01"
+}
+
+task runClient02 (type: JavaExec) {
+  classpath = sourceSets.main.runtimeClasspath
+  main = "webserver.tcp.Client02"
 }
