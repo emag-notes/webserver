@@ -6,6 +6,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -42,6 +44,7 @@ public class HttpUtils {
   public enum StatusCode {
     OK(200, "OK"),
     MOVED_PERMANENTLY(301, "Moved Permanently"),
+
     NOT_FOUND(404, "Not Found");
 
     private int number;
@@ -99,7 +102,7 @@ public class HttpUtils {
     while ((line = IOUtils.readLine(input)) != null) {
       if (line == "") break;
       if (line.startsWith("GET")) {
-        String path = line.split(" ")[1];
+        String path = URLDecoder.decode(line.split(" ")[1], StandardCharsets.UTF_8.name()) ;
         request.setPath(path);
         String[] tmp = path.split("\\.");
         request.setExt(tmp[tmp.length - 1]);
