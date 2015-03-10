@@ -59,7 +59,7 @@ public class TestBBS extends HttpServlet {
     request.setCharacterEncoding("UTF-8");
     Message newMessage = new Message(request.getParameter("handle"), request.getParameter("message"));
     messageList.add(0, newMessage);
-    doGet(request, response);
+    response.sendRedirect("/testbbs/TestBBS");
 
   }
 }

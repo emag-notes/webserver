@@ -1,8 +1,5 @@
 package webserver.henacat.servlet;
 
-import webserver.henacat.core.Request;
-import webserver.henacat.util.HttpUtils;
-
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
@@ -10,28 +7,33 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Locale;
 
 /**
  * @author Yoshimasa Tanabe
  */
-public class HttpServletResponseImpl implements HttpServletResponse {
+class HttpServletResponseImpl implements HttpServletResponse {
 
-  private Request request;
+  int statusCode;
+  String redirectLocation;
+  PrintWriter printWriter;
+  List<Cookie> cookies = new ArrayList<>();
+
   private String contentType = "application/octet-stream";
   private String characterEncoding = "ISO-8859-1";
   private OutputStream output;
-  PrintWriter printWriter;
 
-  public HttpServletResponseImpl(Request request, OutputStream output) {
-    this.request = request;
+  public HttpServletResponseImpl(OutputStream output) {
     this.output = output;
+    this.statusCode = SC_OK;
   }
 
   @Override
   public void addCookie(Cookie cookie) {
-
+    cookies.add(cookie);
   }
 
   @Override
@@ -71,7 +73,8 @@ public class HttpServletResponseImpl implements HttpServletResponse {
 
   @Override
   public void sendRedirect(String location) throws IOException {
-
+    redirectLocation = location;
+    setStatus(SC_FOUND);
   }
 
   @Override
@@ -106,7 +109,7 @@ public class HttpServletResponseImpl implements HttpServletResponse {
 
   @Override
   public void setStatus(int sc) {
-
+    statusCode = sc;
   }
 
   @Override
@@ -116,7 +119,7 @@ public class HttpServletResponseImpl implements HttpServletResponse {
 
   @Override
   public int getStatus() {
-    return 0;
+    return statusCode;
   }
 
   @Override
@@ -136,12 +139,12 @@ public class HttpServletResponseImpl implements HttpServletResponse {
 
   @Override
   public String getCharacterEncoding() {
-    return null;
+    return this.characterEncoding;
   }
 
   @Override
   public String getContentType() {
-    return null;
+    return this.contentType;
   }
 
   @Override
@@ -152,7 +155,6 @@ public class HttpServletResponseImpl implements HttpServletResponse {
   @Override
   public PrintWriter getWriter() throws IOException {
     this.printWriter = new PrintWriter(new OutputStreamWriter(output, characterEncoding));
-    HttpUtils.sendOkResponseHeader(printWriter, contentType);
     return this.printWriter;
   }
 

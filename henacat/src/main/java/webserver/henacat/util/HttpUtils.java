@@ -7,7 +7,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
@@ -29,7 +28,6 @@ public class HttpUtils {
 
   private static final String DOCUMENT_ROOT = System.getProperty("webserver.henacat.util.HttpUtils.DOCUMENT_ROOT");
   private static final String ERROR_DOCUMENT_ROOT = DOCUMENT_ROOT + "/errors";
-  private static final String SERVER_NAME = "localhost:8001";
 
   private static final HashMap<String, String> contentTypeMap =
     new HashMap<String, String>() {
@@ -114,13 +112,24 @@ public class HttpUtils {
     return StatusCode.OK;
   }
 
-  public static void sendOkResponseHeader(PrintWriter writer, String contentType) {
-    writer.println("HTTP/1.1 200 OK");
-    writer.println("Date: " + ZonedDateTime.now(ZoneId.of(String.valueOf(ZoneOffset.UTC))).format(DateTimeFormatter.RFC_1123_DATE_TIME));
-    writer.println("Server: Henacat");
-    writer.println("Connection: close");
-    writer.println("Content-type: " + contentType);
-    writer.println("");
+  public static void sendOkResponseHeader(OutputStream output, String contentType, ResponseHeaderGenerator generator) throws IOException {
+    IOUtils.writeLine(output, "HTTP/1.1 200 OK");
+    IOUtils.writeLine(output, "Date: " + ZonedDateTime.now(ZoneId.of(String.valueOf(ZoneOffset.UTC))).format(DateTimeFormatter.RFC_1123_DATE_TIME));
+    IOUtils.writeLine(output, "Server: Henacat");
+    IOUtils.writeLine(output, "Connection: close");
+    IOUtils.writeLine(output, "Content-type: " + contentType);
+    generator.generate(output);
+    IOUtils.writeLine(output, "");
+  }
+
+
+  public static void sendFoundResponse(OutputStream output, String redirectLocation) throws IOException {
+    IOUtils.writeLine(output, "HTTP/1.1 302 Found");
+    IOUtils.writeLine(output, "Date: " + ZonedDateTime.now(ZoneId.of(String.valueOf(ZoneOffset.UTC))).format(DateTimeFormatter.RFC_1123_DATE_TIME));
+    IOUtils.writeLine(output, "Server: Henacat");
+    IOUtils.writeLine(output, "Location: " + redirectLocation);
+    IOUtils.writeLine(output, "Connection: close");
+    IOUtils.writeLine(output, "");
   }
 
   public static void sendResponse(OutputStream output, Request request, StatusCode statusCode) throws IOException {
@@ -161,7 +170,7 @@ public class HttpUtils {
   }
 
   private static String resolveLocation(Request request) {
-    return "http://" + request.getHeader().getOrDefault("HOST", SERVER_NAME) + request.getPath() + "/";
+    return "http://" + request.getHeader().getOrDefault("HOST", Constants.SERVER_NAME) + request.getPath() + "/";
   }
 
   private static void sendResponseBody(OutputStream output, String path, StatusCode statusCode) throws IOException {

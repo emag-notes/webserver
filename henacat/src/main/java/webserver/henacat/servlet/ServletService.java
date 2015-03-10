@@ -1,10 +1,14 @@
 package webserver.henacat.servlet;
 
 import webserver.henacat.core.Request;
+import webserver.henacat.util.Constants;
 import webserver.henacat.util.HttpMethod;
+import webserver.henacat.util.HttpUtils;
 
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -28,18 +32,21 @@ public class ServletService {
       info.servlet = createServlet(info);
     }
 
+    ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream();
+    HttpServletResponseImpl httpServletResponse = new HttpServletResponseImpl(outputBuffer);
+
     HttpServletRequest httpServletRequest;
     switch (request.getMethod()) {
       case GET: {
         Map<String, String> parameters = stringToMap(request.getQuery());
-        httpServletRequest = new HttpServletRequestImpl(HttpMethod.GET, parameters);
+        httpServletRequest = new HttpServletRequestImpl(HttpMethod.GET, request.getHeader(), parameters, httpServletResponse);
         break;
       }
       case POST: {
         int contentLength = Integer.parseInt(request.getHeader().get("CONTENT-LENGTH"));
         String line = readToSize(input, contentLength);
         Map<String, String> parameters = stringToMap(line);
-        httpServletRequest = new HttpServletRequestImpl(HttpMethod.POST, parameters);
+        httpServletRequest = new HttpServletRequestImpl(HttpMethod.POST, request.getHeader(), parameters, httpServletResponse);
         break;
       }
       default: {
@@ -47,10 +54,26 @@ public class ServletService {
       }
     }
 
-    HttpServletResponseImpl httpServletResponse = new HttpServletResponseImpl(request, output);
     info.servlet.service(httpServletRequest, httpServletResponse);
 
-    httpServletResponse.printWriter.flush();
+    switch (httpServletResponse.getStatus()) {
+      case HttpServletResponse.SC_OK:
+        HttpUtils.sendOkResponseHeader(output, httpServletResponse.getContentType(), new ResponseHeaderGeneratorImpl(httpServletResponse.cookies));
+        httpServletResponse.printWriter.flush();
+        for (byte b : outputBuffer.toByteArray()) {
+          output.write((int)b);
+        }
+        break;
+      case HttpServletResponse.SC_FOUND:
+        String redirectLocation;
+        if (httpServletResponse.redirectLocation.startsWith("/")) {
+          redirectLocation = "http://" + request.getHeader().getOrDefault("HOST", Constants.SERVER_NAME) + httpServletResponse.redirectLocation;
+        } else {
+          redirectLocation = httpServletResponse.redirectLocation;
+        }
+        HttpUtils.sendFoundResponse(output, redirectLocation);
+    }
+
   }
 
   private static HttpServlet createServlet(ServletInfo info) throws Exception, InstantiationException {

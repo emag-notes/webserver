@@ -30,15 +30,64 @@ import java.util.Map;
 /**
  * @author Yoshimasa Tanabe
  */
-public class HttpServletRequestImpl implements HttpServletRequest {
+class HttpServletRequestImpl implements HttpServletRequest {
+
+  private final String SESSION_COOKIE_ID = "JSESSIONID";
 
   private HttpMethod method;
   private String characterEncoding;
+  private Map<String, String> headers;
   private Map<String, String> parameters;
+  private Cookie[] cookies;
+  private HttpSessionImpl session;
+  private HttpServletResponseImpl response;
 
-  public HttpServletRequestImpl(HttpMethod method, Map<String, String> parameters) {
+
+  public HttpServletRequestImpl(HttpMethod method, Map<String, String> headers, Map<String, String> parameters,
+                                HttpServletResponseImpl response) {
     this.method = method;
+    this.headers = headers;
     this.parameters = parameters;
+    this.cookies = parseCookies(headers.get("COOKIE"));
+    this.response = response;
+    this.session = getSessionInternal();
+    if (this.session != null) {
+      addSessionCookie();
+    }
+  }
+
+
+  private HttpSessionImpl getSessionInternal() {
+    if (cookies == null) {
+      return null;
+    }
+    Cookie cookie = null;
+    for (Cookie tmp : cookies) {
+      if (tmp.getName().equals(SESSION_COOKIE_ID)) {
+        cookie = tmp;
+      }
+    }
+    SessionManager manager = SessionManager.getInstance();
+    HttpSessionImpl session = null;
+    if (cookie != null) {
+      session = manager.getSession(cookie.getValue());
+    }
+    return session;
+  }
+  private Cookie[] parseCookies(String cookie) {
+    if (cookie == null) {
+      return null;
+    }
+    String[] cookieArray = cookie.split(";");
+    Cookie[] cookies = new Cookie[cookieArray.length];
+
+    int count = 0;
+    for (String cookiePair : cookieArray) {
+      String[] keyValue = cookiePair.split("=", 2);
+      cookies[count] = new Cookie(keyValue[0], keyValue[1]);
+      count++;
+    }
+    return cookies;
   }
 
   @Override
@@ -48,7 +97,7 @@ public class HttpServletRequestImpl implements HttpServletRequest {
 
   @Override
   public Cookie[] getCookies() {
-    return new Cookie[0];
+    return cookies;
   }
 
   @Override
@@ -138,12 +187,24 @@ public class HttpServletRequestImpl implements HttpServletRequest {
 
   @Override
   public HttpSession getSession(boolean create) {
-    return null;
+    if (!create) {
+      return session;
+    }
+    if (session == null) {
+      SessionManager manager = SessionManager.getInstance();
+      session = manager.createSession();
+      addSessionCookie();
+    }
+    return this.session;
+  }
+
+  private void addSessionCookie() {
+    response.addCookie(new Cookie(SESSION_COOKIE_ID, session.getId() + "; HttpOnly"));
   }
 
   @Override
   public HttpSession getSession() {
-    return null;
+    return getSession(true);
   }
 
   @Override
@@ -395,4 +456,5 @@ public class HttpServletRequestImpl implements HttpServletRequest {
   public DispatcherType getDispatcherType() {
     return null;
   }
+
 }
